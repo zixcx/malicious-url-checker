@@ -76,12 +76,21 @@ class AdvancedMaliciousURLTrainer:
         print(f"url_2.csv: {len(df2)} 개의 악성 URL 로드 완료")
         
         # 정상 URL 데이터 로드
+        normal_urls_large_path = os.path.join(self.data_dir, 'normal_urls_large.csv')
         normal_urls_path = os.path.join(self.data_dir, 'normal_urls.csv')
-        if os.path.exists(normal_urls_path):
+        
+        if os.path.exists(normal_urls_large_path):
+            print(f"대량 정상 URL 데이터 로드 중...")
+            normal_df = pd.read_csv(normal_urls_large_path, encoding='utf-8')
+            all_dfs.append(normal_df)
+            print(f"normal_urls_large.csv: {len(normal_df)} 개의 정상 URL 로드 완료")
+        elif os.path.exists(normal_urls_path):
             print(f"정상 URL 데이터 로드 중...")
             normal_df = pd.read_csv(normal_urls_path, encoding='utf-8')
             all_dfs.append(normal_df)
             print(f"normal_urls.csv: {len(normal_df)} 개의 정상 URL 로드 완료")
+        else:
+            print("경고: 정상 URL 데이터가 없습니다. generate_more_normal_urls.py를 실행하세요.")
         
         # 모든 데이터 합치기
         all_data = pd.concat(all_dfs, ignore_index=True)
@@ -136,23 +145,13 @@ class AdvancedMaliciousURLTrainer:
         
         # 고급 하이퍼파라미터 설정
         hyperparameters = {
-            # 더 강력한 BERT 모델 사용 (보안 특화 모델이 있다면 사용)
-            'model.hf_text.checkpoint_name': 'microsoft/deberta-v3-base',  # 더 나은 성능
-            'optimization.learning_rate': 1e-5,
-            'optimization.weight_decay': 0.01,
-            'optimization.max_epochs': 10,  # 더 많은 에포크
-            'optimization.batch_size': 32,  # GPU 메모리가 충분하면 증가
-            'optimization.warmup_steps': 0.1,
-            'optimization.gradient_clip_val': 1.0,
-            'env.per_gpu_batch_size': 32,
-            'env.num_gpus': 1,  # GPU 수
-            'model.hf_text.pooling_mode': 'cls',
-            'model.hf_text.text_trivial_aug_maxscale': 0.1,  # 약간의 텍스트 증강
+            # 더 강력한 BERT 모델 사용
+            'model.hf_text.checkpoint_name': 'bert-base-uncased',  # 호환성을 위해 기본 BERT 사용
+            'optim.learning_rate': 2e-5,
+            'optim.weight_decay': 0.01,
+            'optim.max_epochs': 5,  # 클래스 불균형 때문에 에포크 줄임
+            'env.per_gpu_batch_size': 16,  # CPU에서도 동작하도록
             'model.hf_text.max_text_len': 256,  # URL은 대부분 짧음
-            'model.hf_text.gradient_checkpointing': True,  # 메모리 효율성
-            'optimization.top_k': 3,  # 상위 3개 체크포인트 저장
-            'optimization.save_best': True,
-            'optimization.patience': 5,
         }
         
         # URL 특화 feature engineering을 위한 전처리 추가
@@ -169,8 +168,7 @@ class AdvancedMaliciousURLTrainer:
             tuning_data=val_df,
             hyperparameters=hyperparameters,
             time_limit=7200,  # 2시간
-            presets='best_quality',
-            verbosity=3  # 상세 로그
+            presets='best_quality'
         )
         
         print("모델 학습 완료!")

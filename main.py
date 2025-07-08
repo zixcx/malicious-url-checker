@@ -61,32 +61,18 @@ class MaliciousURLChecker:
         
         print(f"최종 악성 URL 수: {len(malicious_df)} 개")
         
-        # 정상 URL 데이터 로드 또는 생성
-        normal_urls_path = os.path.join(self.data_dir, 'normal_urls.csv')
-        if os.path.exists(normal_urls_path):
-            print(f"\n정상 URL 데이터 로드 중...")
-            normal_df = pd.read_csv(normal_urls_path, encoding='utf-8')
-            print(f"normal_urls.csv: {len(normal_df)} 개의 정상 URL 로드 완료")
+        # 정상 URL 데이터 로드 (Kaggle Top 1M Sites)
+        top1m_path = os.path.join(self.data_dir, 'top-1m.csv')
+        if os.path.exists(top1m_path):
+            print("\nTop 1M Sites 목록을 정상 URL로 로드 중...")
+            top_df = pd.read_csv(top1m_path, header=None, names=['rank', 'domain'], encoding='utf-8')
+            # https 스킴을 붙여 URL 생성
+            top_df['URL'] = 'https://' + top_df['domain'].astype(str).str.strip()
+            normal_df = top_df[['URL']].copy()
+            normal_df['label'] = 0
+            print(f"top-1m.csv: {len(normal_df)} 개의 정상 URL 로드 완료")
         else:
-            print(f"\n정상 URL 데이터가 없습니다. generate_normal_urls.py를 실행하여 생성하세요.")
-            # 기본 정상 URL 사용
-            normal_urls = [
-                'https://www.google.com',
-                'https://www.github.com',
-                'https://www.microsoft.com',
-                'https://www.amazon.com',
-                'https://www.wikipedia.org',
-                'https://www.youtube.com',
-                'https://www.facebook.com',
-                'https://www.twitter.com',
-                'https://www.linkedin.com',
-                'https://www.netflix.com'
-            ]
-            
-            normal_df = pd.DataFrame({
-                'URL': normal_urls,
-                'label': [0] * len(normal_urls)  # 정상 URL로 표시
-            })
+            raise FileNotFoundError("top-1m.csv 파일이 data 디렉토리에 존재하지 않습니다. Kaggle Top 1M Sites 데이터를 다운로드하여 data/top-1m.csv 로 저장하세요.")
         
         # 전체 데이터 합치기
         all_data = pd.concat([malicious_df, normal_df], ignore_index=True)
